@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>WakeUp Pro</title>
+
+  <!-- iOS PWA (홈 화면 웹앱) 설정 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WakeUp">
+  <meta name="theme-color" content="#000000">
+
+  <style>
+    :root {
+      --bg: #000000;
+      --card: #1C1C1E;
+      --card-elevated: #2C2C2E;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #FFFFFF;
+      --text-sub: #8E8E93;
+      --accent: #FF9F0A;
+      --green: #30D158;
+      --red: #FF453A;
+      --blue: #0A84FF;
+      --spring: cubic-bezier(0.22, 1, 0.36, 1);
+      --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Apple SD Gothic Neo", sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      word-break: keep-all;
+      padding-top: env(safe-area-inset-top, 20px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 90px);
+    }
+
+    /* 줄바꿈 방지 유틸리티 */
+    .nowrap {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 상단 헤더 */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px 8px;
+      position: sticky;
+      top: 0;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 20;
+    }
+
+    .app-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      background: var(--card);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 19px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.18s var(--spring), background 0.2s;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.94);
+      background: var(--card-elevated);
+    }
+
+    .icon-btn.primary {
+      background: var(--accent);
+      color: #000000;
+      border: none;
+    }
+
+    /* 메인 실시간 시계 카드 */
+    .hero-clock-card {
+      margin: 12px 20px 20px;
+      padding: 24px 20px;
+      background: linear-gradient(145deg, #1C1C1E 0%, #121214 100%);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .date-badge {
+      display: inline-block;
+      padding: 5px 12px;
+      background: rgba(255, 159, 10, 0.14);
+      color: var(--accent);
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      white-space: nowrap;
+    }
+
+    .live-clock {
+      font-size: clamp(2.8rem, 13vw, 4.2rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -1.5px;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+
+    .next-alarm-status {
+      margin-top: 10px;
+      font-size: 0.86rem;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 기상 확인 카운트다운 배너 */
+    .wakeup-check-banner {
+      display: none;
+      margin: 0 20px 16px;
+      padding: 14px 18px;
+      background: rgba(48, 209, 88, 0.15);
+      border: 1px solid rgba(48, 209, 88, 0.4);
+      border-radius: 18px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      animation: fadeIn 0.3s var(--spring);
+    }
+
+    .wakeup-check-banner.show {
+      display: flex;
+    }
+
+    .banner-info {
+      min-width: 0;
+    }
+
+    .banner-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--green);
+      white-space: nowrap;
+    }
+
+    .banner-sub {
+      font-size: 0.78rem;
+      color: var(--text-sub);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* 알람 리스트 */
+    .section-label {
+      padding: 0 24px 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .alarm-list {
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .alarm-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: transform 0.2s var(--spring), opacity 0.25s;
+    }
+
+    .alarm-card:active {
+      transform: scale(0.985);
+    }
+
+    .alarm-card.disabled {
+      opacity: 0.52;
+    }
+
+    .alarm-left {
+      min-width: 0;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .alarm-time-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .alarm-ampm {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .alarm-digits {
+      font-size: clamp(2rem, 8.5vw, 2.5rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .alarm-meta {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .tag-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 8px;
+      background: var(--card-elevated);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #D1D1D6;
+      white-space: nowrap;
+    }
+
+    .tag-pill.mission {
+      background: rgba(255, 159, 10, 0.16);
+      color: var(--accent);
+    }
+
+    .alarm-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    /* iOS 토글 스위치 */
+    .ios-switch {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .ios-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #39393D;
+      border-radius: 32px;
+      cursor: pointer;
+      transition: background-color 0.25s var(--spring);
+    }
+
+    .switch-slider::before {
+      content: "";
+      position: absolute;
+      height: 28px;
+      width: 28px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #FFFFFF;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+      transition: transform 0.25s var(--spring);
+    }
+
+    .ios-switch input:checked + .switch-slider {
+      background-color: var(--green);
+    }
+
+    .ios-switch input:checked + .switch-slider::before {
+      transform: translateX(20px);
+    }
+
+    /* 하단 플로팅 바 */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 20px calc(env(safe-area-inset-bottom, 16px) + 10px);
+      background: rgba(18, 18, 20, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      z-index: 25;
+    }
+
+    .bar-btn {
+      flex: 1;
+      height: 48px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card-elevated);
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.18s var(--spring), background 0.2s;
+    }
+
+    .bar-btn:active {
+      transform: scale(0.96);
+    }
+
+    .bar-btn.accent {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      font-weight: 700;
+    }
+
+    /* 모달 (알람 추가/편집 시트) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s var(--sheet-ease);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 520px;
+      max-height: 90dvh;
+      background: #1C1C1E;
+      border-radius: 28px 28px 0 0;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.36s var(--sheet-ease);
+      overflow: hidden;
+    }
+
+    .modal-backdrop.open .modal-sheet {
+      transform: translateY(0);
+    }
+
+    .sheet-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sheet-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .sheet-btn.bold {
+      font-weight: 700;
+    }
+
+    .sheet-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .sheet-body {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
+    }
+
+    /* 시간 선택 휠 영역 */
+    .time-picker-box {
+      background: var(--card-elevated);
+      border-radius: 18px;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .time-select {
+      background: #121214;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      font-size: 2.1rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      padding: 10px 16px;
+      text-align: center;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    .time-colon {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-sub);
+    }
+
+    /* 폼 그룹 */
+    .form-group {
+      background: var(--card-elevated);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .form-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .form-row:last-child {
+      border-bottom: none;
+    }
+
+    .form-label {
+      font-size: 0.94rem;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .form-sub {
+      font-size: 0.76rem;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .form-input, .form-select {
+      background: #18181A;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      text-align: right;
+      min-width: 0;
+      flex: 1;
+      max-width: 210px;
+    }
+
+    .sound-preview-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: 1;
+      justify-content: flex-end;
+    }
+
+    .mini-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .delete-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(255, 69, 58, 0.15);
+      color: var(--red);
+      border: 1px solid rgba(255, 69, 58, 0.3);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* 취침 대기 모드 (Nightstand OLED 화면) */
+    .nightstand-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000000;
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .nightstand-overlay.active {
+      display: flex;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .nightstand-time {
+      font-size: clamp(4rem, 20vw, 6.5rem);
+      font-weight: 800;
+      color: #FF9F0A;
+      opacity: 0.65;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -2px;
+      white-space: nowrap;
+    }
+
+    .nightstand-desc {
+      margin-top: 12px;
+      color: #636366;
+      font-size: 0.88rem;
+      max-width: 300px;
+      line-height: 1.45;
+    }
+
+    .nightstand-exit {
+      margin-top: 40px;
+      padding: 12px 24px;
+      border-radius: 999px;
+      background: #1C1C1E;
+      color: #8E8E93;
+      border: 1px solid #2C2C2E;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* 실제 알람 발동 전체화면 오버레이 */
+    .ring-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000000;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: calc(env(safe-area-inset-top, 24px) + 16px) 20px calc(env(safe-area-inset-bottom, 24px) + 16px);
+      overflow-y: auto;
+    }
+
+    .ring-overlay.active {
+      display: flex;
+      animation: zoomIn 0.28s var(--spring);
+    }
+
+    @keyframes strobeFlash {
+      0%, 100% { background-color: #000000; }
+      50% { background-color: #3A1D00; }
+    }
+
+    .ring-overlay.strobe {
+      animation: strobeFlash 0.65s infinite;
+    }
+
+    .ring-top {
+      text-align: center;
+    }
+
+    .ring-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 69, 58, 0.2);
+      color: var(--red);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      animation: pulseScale 1s infinite alternate;
+    }
+
+    .ring-clock {
+      font-size: clamp(3rem, 14vw, 4.4rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+
+    .ring-label {
+      margin-top: 6px;
+      font-size: 1.05rem;
+      color: #D1D1D6;
+      font-weight: 600;
+    }
+
+    /* 미션 박스 */
+    .mission-container {
+      background: rgba(28, 28, 30, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      padding: 20px;
+      margin: 16px 0;
+      text-align: center;
+    }
+
+    .mission-header {
+      font-size: 0.85rem;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 8px;
+      white-space: nowrap;
+    }
+
+    .mission-prompt {
+      font-size: clamp(1.35rem, 6vw, 1.8rem);
+      font-weight: 800;
+      margin-bottom: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 암산 전용 키패드 */
+    .math-answer-box {
+      height: 52px;
+      background: #121214;
+      border: 2px solid var(--accent);
+      border-radius: 14px;
+      font-size: 1.7rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .key-btn {
+      height: 48px;
+      border-radius: 12px;
+      background: var(--card-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 1.25rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.1s;
+    }
+
+    .key-btn:active {
+      transform: scale(0.94);
+      background: #3A3A3C;
+    }
+
+    .key-btn.submit {
+      background: var(--green);
+      color: #000;
+    }
+
+    /* 기억력 타일 그리드 */
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 260px;
+      margin: 0 auto;
+    }
+
+    .mem-tile {
+      aspect-ratio: 1;
+      border-radius: 14px;
+      background: var(--card-elevated);
+      border: 2px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.15s, background-color 0.2s;
+    }
+
+    .mem-tile.highlight {
+      background: var(--accent);
+      border-color: #FFD60A;
+      transform: scale(1.04);
+    }
+
+    .mem-tile.correct {
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .mem-tile.wrong {
+      background: var(--red);
+    }
+
+    /* 타이핑 미션 */
+    .typing-target {
+      padding: 12px;
+      background: #121214;
+      border-radius: 12px;
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: #FFD60A;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .typing-input {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      background: #121214;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    /* 연타/흔들기 미션 */
+    .shake-progress-wrap {
+      width: 100%;
+      height: 18px;
+      background: #121214;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .shake-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      transition: width 0.15s ease;
+    }
+
+    .tap-burst-btn {
+      width: 100%;
+      height: 64px;
+      border-radius: 16px;
+      background: var(--accent);
+      color: #000;
+      font-size: 1.15rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tap-burst-btn:active {
+      transform: scale(0.96);
+    }
+
+    .ring-bottom {
+      text-align: center;
+    }
+
+    .snooze-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      background: var(--card-elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .no-snooze-msg {
+      font-size: 0.82rem;
+      color: var(--text-sub);
+      white-space: nowrap;
+    }
+
+    /* 기상 확인 팝업 모달 */
+    .check-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 110;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .check-modal.active {
+      display: flex;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .check-card {
+      background: var(--card);
+      border: 1px solid var(--green);
+      border-radius: 24px;
+      padding: 28px 22px;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes zoomIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pulseScale {
+      from { transform: scale(1); }
+      to { transform: scale(1.06); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 헤더 -->
+  <header class="app-header">
+    <div class="app-title">WakeUp Pro</div>
+    <div class="header-actions">
+      <button class="icon-btn" id="testAlarmBtn">즉시 체험</button>
+      <button class="icon-btn primary" id="addAlarmBtn">+ 알람 추가</button>
+    </div>
+  </header>
+
+  <!-- 실시간 시계 영역 -->
+  <section class="hero-clock-card">
+    <div class="date-badge" id="currentDateText">11월 12일 목요일</div>
+    <div class="live-clock" id="liveClock">00:00:00</div>
+    <div class="next-alarm-status" id="nextAlarmText">활성화된 알람이 없습니다</div>
+  </section>
+
+  <!-- 기상 확인 체크인 대기 배너 -->
+  <div class="wakeup-check-banner" id="wakeupBanner">
+    <div class="banner-info">
+      <div class="banner-title">기상 확인 체크인 대기 중</div>
+      <div class="banner-sub" id="wakeupCountdownText">남은 시간: 05:00</div>
+    </div>
+    <button class="mini-btn" id="confirmAwakeEarlyBtn">지금 인증 완료</button>
+  </div>
+
+  <!-- 알람 목록 -->
+  <div class="section-label">
+    <span>내 알람 목록</span>
+    <span id="alarmCountText">1개</span>
+  </div>
+  <main class="alarm-list" id="alarmListContainer"></main>
+
+  <!-- 하단 플로팅 액션 바 -->
+  <nav class="bottom-bar">
+    <button class="bar-btn" id="nightstandBtn">취침 대기 모드 (화면 유지)</button>
+    <button class="bar-btn accent" id="quickAddBtn">+ 새 알람 설정</button>
+  </nav>
+
+  <!-- 알람 추가/편집 모달 시트 -->
+  <div class="modal-backdrop" id="alarmModal">
+    <div class="modal-sheet">
+      <div class="sheet-header">
+        <button class="sheet-btn" id="closeModalBtn">취소</button>
+        <div class="sheet-title" id="modalTitle">알람 설정</div>
+        <button class="sheet-btn bold" id="saveAlarmBtn">저장</button>
+      </div>
+      <div class="sheet-body">
+        <!-- 시간 선택 -->
+        <div class="time-picker-box">
+          <select class="time-select" id="hourSelect"></select>
+          <span class="time-colon">:</span>
+          <select class="time-select" id="minuteSelect"></select>
+        </div>
+
+        <!-- 미션 및 사운드 설정 -->
+        <div class="form-group">
+          <div class="form-row">
+            <span class="form-label">알람 이름 / 다짐</span>
+            <input type="text" class="form-input" id="labelInput" placeholder="뒤척임 없이 바로 기상!" maxlength="25">
+          </div>
+          <div class="form-row">
+            <span class="form-label">기상 미션</span>
+            <select class="form-select" id="missionSelect">
+              <option value="math">암산 풀기 (3문제)</option>
+              <option value="memory">기억력 타일 찾기</option>
+              <option value="typing">동기부여 문장 필사</option>
+              <option value="shake">게이지 연타 / 흔들기</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <span class="form-label">알람 사운드</span>
+            <div class="sound-preview-row">
+              <select class="form-select" id="soundSelect">
+                <option value="classic">클래식 디지털 비프</option>
+                <option value="siren">고주파 비상 사이렌</option>
+                <option value="arpeggio">공격적 신스 멜로디</option>
+                <option value="pulse">중저음 소나 펄스</option>
+              </select>
+              <button type="button" class="mini-btn" id="previewSoundBtn">듣기</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 수면 관성 차단 고급 옵션 -->
+        <div class="form-group">
+          <div class="form-row">
+            <div>
+              <div class="form-label">스누즈(미루기) 완전 차단</div>
+              <div class="form-sub">미션을 끝내기 전까지 알람을 끌 수 없습니다</div>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="noSnoozeCheck" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div>
+              <div class="form-label">점진적 볼륨 증가</div>
+              <div class="form-sub">작은 소리에서 30초 동안 최대 음량으로 증폭</div>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="fadeInCheck" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div>
+              <div class="form-label">화면 최대 밝기 점멸</div>
+              <div class="form-sub">알람 시 화면이 깜빡여 시각 자극을 줍니다</div>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="strobeCheck" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div>
+              <div class="form-label">기상 확인 재체크 (5분 뒤)</div>
+              <div class="form-sub">다시 잠들면 비상 알람이 재발동됩니다</div>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="wakeCheckToggle" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div>
+              <div class="form-label">기상 직후 TTS 음성 브리핑</div>
+              <div class="form-sub">미션 완료 시 현재 시각과 다짐을 읽어줍니다</div>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="ttsCheck" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <button type="button" class="delete-btn" id="deleteAlarmBtn" style="display:none;">이 알람 삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 취침 대기 모드 오버레이 -->
+  <div class="nightstand-overlay" id="nightstandOverlay">
+    <div class="date-badge">취침 대기 모드 활성화됨 (오디오 & 화면 유지)</div>
+    <div class="nightstand-time" id="nightstandClock">00:00</div>
+    <p class="nightstand-desc">충전기를 연결한 뒤 이 화면을 켜두면 아이폰 절전 모드로 인해 알람이 멈추는 현상을 완벽히 방지합니다.</p>
+    <button class="nightstand-exit" id="exitNightstandBtn">대기 모드 종료</button>
+  </div>
+
+  <!-- 알람 발동 & 미션 수행 오버레이 -->
+  <div class="ring-overlay" id="ringOverlay">
+    <div class="ring-top">
+      <div class="ring-badge">기상 미션 진행 중</div>
+      <div class="ring-clock" id="ringClockText">06:30</div>
+      <div class="ring-label" id="ringLabelText">뒤척임 없이 바로 기상!</div>
+    </div>
+
+    <!-- 동적 미션 영역 -->
+    <div class="mission-container" id="missionBox"></div>
+
+    <div class="ring-bottom" id="ringBottomArea"></div>
+  </div>
+
+  <!-- 기상 확인 최종 팝업 -->
+  <div class="check-modal" id="wakeVerifyModal">
+    <div class="check-card">
+      <div class="ring-badge" style="background:rgba(48,209,88,0.2); color:var(--green);">기상 확인 체크인</div>
+      <h2 style="font-size:1.4rem; margin:8px 0;">지금 깨어 계신가요?</h2>
+      <p style="font-size:0.88rem; color:var(--text-sub); margin-bottom:18px;">
+        <span id="verifyRemainSec">60</span>초 안에 아래 버튼을 누르지 않으면<br>비상 알람이 다시 울립니다!
+      </p>
+      <button class="bar-btn accent" style="width:100%;" id="verifyAwakeBtn">네, 완전히 깨어 있습니다!</button>
+    </div>
+  </div>
+
+  <script>
+    /**************************************************************
+     * 1. 상태 관리 및 초기 데이터
+     **************************************************************/
+    const STORAGE_KEY = 'WAKEUP_PRO_ALARMS_V1';
+    let alarms = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || [
+      {
+        id: 'default-1',
+        hour: 6,
+        minute: 30,
+        label: '뒤척임 없이 상쾌한 기상!',
+        mission: 'math',
+        sound: 'arpeggio',
+        noSnooze: true,
+        fadeIn: true,
+        strobe: true,
+        wakeCheck: true,
+        tts: true,
+        enabled: true
+      }
+    ];
+
+    let editingAlarmId = null;
+    let activeAlarm = null;
+    let lastTriggeredMinuteKey = '';
+    let wakeLockSentinel = null;
+
+    // 기상 확인 타이머 상태
+    let wakeCheckCountdown = 0;
+    let wakeCheckInterval = null;
+    let verifyModalCountdown = 60;
+    let verifyModalInterval = null;
+
+    /**************************************************************
+     * 2. Web Audio API 신디사이저 엔진 (외부 파일 없이 4종 사운드 생성)
+     **************************************************************/
+    let audioCtx = null;
+    let soundLoopTimer = null;
+    let previewTimer = null;
+    let currentGainMultiplier = 1.0;
+    let fadeStartTime = 0;
+
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSynthPattern(type, gainScale = 0.8) {
+      ensureAudioContext();
+      const now = audioCtx.currentTime;
+
+      if (type === 'classic') {
+        // 클래식 디지털 전자 시계 삐-삐-삐-삐
+        [0, 0.12, 0.24, 0.36].forEach(offset => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(2400, now + offset);
+          gain.gain.setValueAtTime(0.35 * gainScale, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.08);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.09);
+        });
+      } else if (type === 'siren') {
+        // 고주파 비상 사이렌 스윕
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(750, now);
+        osc.frequency.linearRampToValueAtTime(1850, now + 0.35);
+        osc.frequency.linearRampToValueAtTime(750, now + 0.7);
+        gain.gain.setValueAtTime(0.4 * gainScale, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.72);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.73);
+      } else if (type === 'arpeggio') {
+        // 공격적 신스 아르페지오
+        const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+          gain.gain.setValueAtTime(0.42 * gainScale, now + idx * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.09 + 0.08);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.09);
+          osc.stop(now + idx * 0.09 + 0.085);
+        });
+      } else {
+        // 중저음 소나 펄스
+        [0, 0.28].forEach(offset => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now + offset);
+          osc.frequency.exponentialRampToValueAtTime(880, now + offset + 0.2);
+          gain.gain.setValueAtTime(0.5 * gainScale, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.005, now + offset + 0.24);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.25);
+        });
+      }
+    }
+
+    function startAlarmLoop(alarm) {
+      stopAlarmLoop();
+      fadeStartTime = Date.now();
+
+      const triggerTick = () => {
+        let scale = 1.0;
+        if (alarm.fadeIn) {
+          const elapsed = (Date.now() - fadeStartTime) / 1000;
+          scale = Math.min(1.0, Math.max(0.08, elapsed / 30));
+        }
+        playSynthPattern(alarm.sound, scale);
+      };
+
+      triggerTick();
+      soundLoopTimer = setInterval(triggerTick, 900);
+    }
+
+    function stopAlarmLoop() {
+      if (soundLoopTimer) {
+        clearInterval(soundLoopTimer);
+        soundLoopTimer = null;
+      }
+      if (previewTimer) {
+        clearTimeout(previewTimer);
+        previewTimer = null;
+      }
+    }
+
+    /**************************************************************
+     * 3. 시계 업데이트 및 알람 트리거 체크
+     **************************************************************/
+    function pad2(n) {
+      return String(n).padStart(2, '0');
+    }
+
+    function formatAmPm(hour, minute) {
+      const ampm = hour >= 12 ? '오후' : '오전';
+      const h12 = hour % 12 === 0 ? 12 : hour % 12;
+      return { ampm, digits: `${pad2(h12)}:${pad2(minute)}` };
+    }
+
+    function updateMainClock() {
+      const now = new Date();
+      const h = now.getHours();
+      const m = now.getMinutes();
+      const s = now.getSeconds();
+
+      const timeStr = `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+      document.getElementById('liveClock').textContent = timeStr;
+      document.getElementById('nightstandClock').textContent = `${pad2(h)}:${pad2(m)}`;
+
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      document.getElementById('currentDateText').textContent =
+        `${now.getMonth() + 1}월 ${now.getDate()}일 ${days[now.getDay()]}요일`;
+
+      // 정각 알람 매칭 체크
+      const minuteKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${h}-${m}`;
+      if (s === 0 && lastTriggeredMinuteKey !== minuteKey && !activeAlarm) {
+        const matched = alarms.find(a => a.enabled && a.hour === h && a.minute === m);
+        if (matched) {
+          lastTriggeredMinuteKey = minuteKey;
+          triggerAlarm(matched);
+        }
+      }
+
+      updateNextAlarmSummary(now);
+    }
+
+    function updateNextAlarmSummary(now) {
+      const enabledList = alarms.filter(a => a.enabled);
+      const statusEl = document.getElementById('nextAlarmText');
+      if (enabledList.length === 0) {
+        statusEl.textContent = '활성화된 알람이 없습니다';
+        return;
+      }
+
+      let minDiffMs = Infinity;
+      enabledList.forEach(a => {
+        const target = new Date(now);
+        target.setHours(a.hour, a.minute, 0, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+        const diff = target - now;
+        if (diff < minDiffMs) minDiffMs = diff;
+      });
+
+      const totalMins = Math.ceil(minDiffMs / 60000);
+      const hrs = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      statusEl.textContent = hrs > 0
+        ? `다음 알람까지 ${hrs}시간 ${mins}분 남음`
+        : `다음 알람까지 ${mins}분 남음`;
+    }
+
+    /**************************************************************
+     * 4. 알람 리스트 렌더링 & 모달 조작
+     **************************************************************/
+    const missionNames = {
+      math: '암산 미션',
+      memory: '기억력 타일',
+      typing: '문장 필사',
+      shake: '연타 각성'
+    };
+
+    const soundNames = {
+      classic: '클래식 비프',
+      siren: '고주파 사이렌',
+      arpeggio: '신스 멜로디',
+      pulse: '소나 펄스'
+    };
+
+    function saveAlarms() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(alarms));
+      renderAlarmList();
+    }
+
+    function renderAlarmList() {
+      const container = document.getElementById('alarmListContainer');
+      document.getElementById('alarmCountText').textContent = `${alarms.length}개`;
+      container.innerHTML = '';
+
+      alarms.forEach(alarm => {
+        const { ampm, digits } = formatAmPm(alarm.hour, alarm.minute);
+        const card = document.createElement('div');
+        card.className = `alarm-card ${alarm.enabled ? '' : 'disabled'}`;
+
+        card.innerHTML = `
+          <div class="alarm-left" data-edit="${alarm.id}">
+            <div class="alarm-time-row">
+              <span class="alarm-ampm">${ampm}</span>
+              <span class="alarm-digits">${digits}</span>
+            </div>
+            <div class="alarm-meta">
+              <span class="tag-pill mission">${missionNames[alarm.mission]}</span>
+              <span class="tag-pill">${soundNames[alarm.sound]}</span>
+              ${alarm.noSnooze ? '<span class="tag-pill">스누즈 차단</span>' : ''}
+              <span class="tag-pill nowrap" style="max-width:140px;">${alarm.label}</span>
+            </div>
+          </div>
+          <div class="alarm-right">
+            <label class="ios-switch">
+              <input type="checkbox" data-toggle="${alarm.id}" ${alarm.enabled ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      // 이벤트 바인딩
+      container.querySelectorAll('[data-edit]').forEach(el => {
+        el.addEventListener('click', () => openModal(el.dataset.edit));
+      });
+
+      container.querySelectorAll('[data-toggle]').forEach(input => {
+        input.addEventListener('change', (e) => {
+          ensureAudioContext();
+          const target = alarms.find(a => a.id === e.target.dataset.toggle);
+          if (target) {
+            target.enabled = e.target.checked;
+            saveAlarms();
+          }
+        });
+      });
+    }
+
+    function initSelectOptions() {
+      const hSel = document.getElementById('hourSelect');
+      const mSel = document.getElementById('minuteSelect');
+      for (let h = 0; h < 24; h++) {
+        const opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = `${pad2(h)}시`;
+        hSel.appendChild(opt);
+      }
+      for (let m = 0; m < 60; m++) {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = `${pad2(m)}분`;
+        mSel.appendChild(opt);
+      }
+    }
+
+    function openModal(alarmId = null) {
+      ensureAudioContext();
+      editingAlarmId = alarmId;
+      const modal = document.getElementById('alarmModal');
+      const delBtn = document.getElementById('deleteAlarmBtn');
+
+      if (alarmId) {
+        const item = alarms.find(a => a.id === alarmId);
+        document.getElementById('modalTitle').textContent = '알람 편집';
+        document.getElementById('hourSelect').value = item.hour;
+        document.getElementById('minuteSelect').value = item.minute;
+        document.getElementById('labelInput').value = item.label;
+        document.getElementById('missionSelect').value = item.mission;
+        document.getElementById('soundSelect').value = item.sound;
+        document.getElementById('noSnoozeCheck').checked = item.noSnooze;
+        document.getElementById('fadeInCheck').checked = item.fadeIn;
+        document.getElementById('strobeCheck').checked = item.strobe;
+        document.getElementById('wakeCheckToggle').checked = item.wakeCheck;
+        document.getElementById('ttsCheck').checked = item.tts;
+        delBtn.style.display = 'block';
+      } else {
+        const now = new Date();
+        document.getElementById('modalTitle').textContent = '새 알람 추가';
+        document.getElementById('hourSelect').value = now.getHours();
+        document.getElementById('minuteSelect').value = (now.getMinutes() + 1) % 60;
+        document.getElementById('labelInput').value = '뒤척임 없이 깔끔한 기상!';
+        document.getElementById('missionSelect').value = 'math';
+        document.getElementById('soundSelect').value = 'arpeggio';
+        document.getElementById('noSnoozeCheck').checked = true;
+        document.getElementById('fadeInCheck').checked = true;
+        document.getElementById('strobeCheck').checked = true;
+        document.getElementById('wakeCheckToggle').checked = true;
+        document.getElementById('ttsCheck').checked = true;
+        delBtn.style.display = 'none';
+      }
+
+      modal.classList.add('open');
+    }
+
+    function closeModal() {
+      stopAlarmLoop();
+      document.getElementById('alarmModal').classList.remove('open');
+    }
+
+    /**************************************************************
+     * 5. 알람 발동 및 4가지 기상 미션 엔진
+     **************************************************************/
+    function triggerAlarm(alarm) {
+      activeAlarm = alarm;
+      const overlay = document.getElementById('ringOverlay');
+      const { ampm, digits } = formatAmPm(alarm.hour, alarm.minute);
+
+      document.getElementById('ringClockText').textContent = `${ampm} ${digits}`;
+      document.getElementById('ringLabelText').textContent = alarm.label || '기상 시간입니다!';
+
+      if (alarm.strobe) {
+        overlay.classList.add('strobe');
+      } else {
+        overlay.classList.remove('strobe');
+      }
+
+      // 스누즈 영역 렌더링
+      const bottomArea = document.getElementById('ringBottomArea');
+      if (alarm.noSnooze) {
+        bottomArea.innerHTML = `<div class="no-snooze-msg">스누즈 차단됨 — 미션을 완료해야 알람이 꺼집니다</div>`;
+      } else {
+        bottomArea.innerHTML = `<button class="snooze-btn" id="snoozeTriggerBtn">5분 뒤 다시 알림 (Snooze)</button>`;
+        document.getElementById('snoozeTriggerBtn').addEventListener('click', () => {
+          snoozeCurrentAlarm();
+        });
+      }
+
+      renderMissionUI(alarm.mission);
+      overlay.classList.add('active');
+      startAlarmLoop(alarm);
+    }
+
+    function renderMissionUI(missionType) {
+      const box = document.getElementById('missionBox');
+
+      if (missionType === 'math') {
+        // 암산 미션 (3문제 연속)
+        let solved = 0;
+        const total = 3;
+        let currentAnswer = 0;
+        let userBuffer = '';
+
+        const nextProblem = () => {
+          const a = Math.floor(Math.random() * 35) + 14;
+          const b = Math.floor(Math.random() * 35) + 12;
+          currentAnswer = a + b;
+          userBuffer = '';
+          box.innerHTML = `
+            <div class="mission-header">암산 미션 (${solved + 1} / ${total})</div>
+            <div class="mission-prompt">${a} + ${b} = ?</div>
+            <div class="math-answer-box" id="mathDisplay">?</div>
+            <div class="keypad-grid">
+              ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="key-btn" data-key="${n}">${n}</button>`).join('')}
+              <button class="key-btn" data-key="del">지움</button>
+              <button class="key-btn" data-key="0">0</button>
+              <button class="key-btn submit" data-key="ok">확인</button>
+            </div>
+          `;
+
+          box.querySelectorAll('.key-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const k = btn.dataset.key;
+              if (k === 'del') {
+                userBuffer = userBuffer.slice(0, -1);
+              } else if (k === 'ok') {
+                if (parseInt(userBuffer, 10) === currentAnswer) {
+                  solved++;
+                  if (solved >= total) {
+                    completeAlarmMission();
+                    return;
+                  }
+                  nextProblem();
+                  return;
+                } else {
+                  userBuffer = '';
+                  document.getElementById('mathDisplay').textContent = '오답!';
+                  return;
+                }
+              } else if (userBuffer.length < 4) {
+                userBuffer += k;
+              }
+              document.getElementById('mathDisplay').textContent = userBuffer || '?';
+            });
+          });
+        };
+        nextProblem();
+
+      } else if (missionType === 'memory') {
+        // 기억력 타일 미션 (2라운드)
+        let round = 1;
+        const startMemoryRound = () => {
+          const targets = new Set();
+          while (targets.size < 4) {
+            targets.add(Math.floor(Math.random() * 9));
+          }
+          const picked = new Set();
+          let locked = true;
+
+          box.innerHTML = `
+            <div class="mission-header">기억력 타일 미션 (${round} / 2)</div>
+            <div class="mission-prompt" id="memStatusText">반짝이는 타일 4개를 기억하세요</div>
+            <div class="memory-grid">
+              ${Array.from({length: 9}, (_, i) => `<div class="mem-tile ${targets.has(i) ? 'highlight' : ''}" data-idx="${i}"></div>`).join('')}
+            </div>
+          `;
+
+          setTimeout(() => {
+            locked = false;
+            const statusEl = document.getElementById('memStatusText');
+            if (statusEl) statusEl.textContent = '기억한 타일을 모두 터치하세요!';
+            box.querySelectorAll('.mem-tile').forEach(t => t.classList.remove('highlight'));
+          }, 1400);
+
+          box.querySelectorAll('.mem-tile').forEach(tile => {
+            tile.addEventListener('click', () => {
+              if (locked) return;
+              const idx = parseInt(tile.dataset.idx, 10);
+              if (targets.has(idx)) {
+                tile.classList.add('correct');
+                picked.add(idx);
+                if (picked.size === targets.size) {
+                  locked = true;
+                  if (round >= 2) {
+                    setTimeout(completeAlarmMission, 250);
+                  } else {
+                    round++;
+                    setTimeout(startMemoryRound, 400);
+                  }
+                }
+              } else {
+                tile.classList.add('wrong');
+                locked = true;
+                setTimeout(startMemoryRound, 600);
+              }
+            });
+          });
+        };
+        startMemoryRound();
+
+      } else if (missionType === 'typing') {
+        // 동기부여 문장 필사 미션
+        const quotes = [
+          '오늘 하루도 흔들림 없이 집중하자',
+          '지금 일어나는 순간이 하루를 결정한다',
+          '미루지 않고 바로 시작하는 습관'
+        ];
+        const targetQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+        box.innerHTML = `
+          <div class="mission-header">동기부여 문장 필사 미션</div>
+          <div class="typing-target">${targetQuote}</div>
+          <input type="text" class="typing-input" id="quoteInput" placeholder="위 문장을 그대로 입력하세요">
+          <button class="tap-burst-btn" id="quoteSubmitBtn">문장 인증 완료</button>
+        `;
+
+        document.getElementById('quoteSubmitBtn').addEventListener('click', () => {
+          const val = document.getElementById('quoteInput').value.trim();
+          if (val === targetQuote) {
+            completeAlarmMission();
+          } else {
+            document.getElementById('quoteInput').value = '';
+            document.getElementById('quoteInput').placeholder = '오타가 있습니다! 정확히 입력해주세요';
+          }
+        });
+
+      } else {
+        // 연타 / 흔들기 각성 미션
+        let count = 0;
+        const goal = 25;
+
+        box.innerHTML = `
+          <div class="mission-header">신체 각성 미션</div>
+          <div class="mission-prompt" id="burstCountText">25회 빠르게 연타하세요!</div>
+          <div class="shake-progress-wrap">
+            <div class="shake-progress-bar" id="burstBar"></div>
+          </div>
+          <button class="tap-burst-btn" id="burstTapBtn">여기 빠르게 터치! (0 / 25)</button>
+        `;
+
+        const tapBtn = document.getElementById('burstTapBtn');
+        tapBtn.addEventListener('click', () => {
+          count++;
+          const pct = Math.min(100, Math.round((count / goal) * 100));
+          document.getElementById('burstBar').style.width = `${pct}%`;
+          tapBtn.textContent = `여기 빠르게 터치! (${count} / ${goal})`;
+          if (count >= goal) {
+            completeAlarmMission();
+          }
+        });
+      }
+    }
+
+    function snoozeCurrentAlarm() {
+      if (!activeAlarm) return;
+      stopAlarmLoop();
+      document.getElementById('ringOverlay').classList.remove('active', 'strobe');
+      const snoozedAlarm = { ...activeAlarm };
+      activeAlarm = null;
+
+      setTimeout(() => {
+        triggerAlarm(snoozedAlarm);
+      }, 5 * 60 * 1000);
+    }
+
+    function completeAlarmMission() {
+      const finishedAlarm = activeAlarm;
+      activeAlarm = null;
+      stopAlarmLoop();
+      document.getElementById('ringOverlay').classList.remove('active', 'strobe');
+
+      if (!finishedAlarm) return;
+
+      // 1. 아침 TTS 음성 브리핑
+      if (finishedAlarm.tts && 'speechSynthesis' in window) {
+        const now = new Date();
+        const msg = new SpeechSynthesisUtterance(
+          `좋은 아침입니다. 현재 시각은 ${now.getHours()}시 ${now.getMinutes()}분입니다. 오늘의 다짐, ${finishedAlarm.label}. 활기차게 하루를 시작하세요.`
+        );
+        msg.lang = 'ko-KR';
+        msg.rate = 1.02;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(msg);
+      }
+
+      // 2. 기상 확인 재체크 타이머 시작 (기본 5분 = 300초)
+      if (finishedAlarm.wakeCheck) {
+        startWakeCheckCountdown(finishedAlarm, 300);
+      }
+    }
+
+    /**************************************************************
+     * 6. 기상 확인 재체크 (다시 잠들기 방지 안전장치)
+     **************************************************************/
+    function startWakeCheckCountdown(alarmRef, seconds) {
+      clearInterval(wakeCheckInterval);
+      wakeCheckCountdown = seconds;
+      const banner = document.getElementById('wakeupBanner');
+      const textEl = document.getElementById('wakeupCountdownText');
+      banner.classList.add('show');
+
+      const updateBanner = () => {
+        const m = Math.floor(wakeCheckCountdown / 60);
+        const s = wakeCheckCountdown % 60;
+        textEl.textContent = `재확인까지 남은 시간: ${pad2(m)}:${pad2(s)}`;
+      };
+
+      updateBanner();
+      wakeCheckInterval = setInterval(() => {
+        wakeCheckCountdown--;
+        updateBanner();
+        if (wakeCheckCountdown <= 0) {
+          clearInterval(wakeCheckInterval);
+          banner.classList.remove('show');
+          openWakeVerifyModal(alarmRef);
+        }
+      }, 1000);
+    }
+
+    function openWakeVerifyModal(alarmRef) {
+      const modal = document.getElementById('wakeVerifyModal');
+      const secEl = document.getElementById('verifyRemainSec');
+      verifyModalCountdown = 60;
+      secEl.textContent = verifyModalCountdown;
+      modal.classList.add('active');
+      playSynthPattern('classic', 0.6);
+
+      clearInterval(verifyModalInterval);
+      verifyModalInterval = setInterval(() => {
+        verifyModalCountdown--;
+        secEl.textContent = verifyModalCountdown;
+        if (verifyModalCountdown <= 0) {
+          clearInterval(verifyModalInterval);
+          modal.classList.remove('active');
+          triggerAlarm(alarmRef);
+        }
+      }, 1000);
+    }
+
+    /**************************************************************
+     * 7. 화면 꺼짐 방지 (Screen Wake Lock API & 취침 대기 모드)
+     **************************************************************/
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          // 일부 구형 iOS에서는 지원되지 않을 수 있음
+        }
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release();
+        wakeLockSentinel = null;
+      }
+    }
+
+    /**************************************************************
+     * 8. 이벤트 리스너 초기화
+     **************************************************************/
+    window.addEventListener('DOMContentLoaded', () => {
+      initSelectOptions();
+      renderAlarmList();
+      updateMainClock();
+      setInterval(updateMainClock, 1000);
+
+      document.getElementById('addAlarmBtn').addEventListener('click', () => openModal(null));
+      document.getElementById('quickAddBtn').addEventListener('click', () => openModal(null));
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+
+      // 사운드 미리듣기
+      document.getElementById('previewSoundBtn').addEventListener('click', () => {
+        const sType = document.getElementById('soundSelect').value;
+        playSynthPattern(sType, 0.85);
+      });
+
+      // 알람 저장
+      document.getElementById('saveAlarmBtn').addEventListener('click', () => {
+        const newItem = {
+          id: editingAlarmId || `alarm-${Date.now()}`,
+          hour: parseInt(document.getElementById('hourSelect').value, 10),
+          minute: parseInt(document.getElementById('minuteSelect').value, 10),
+          label: document.getElementById('labelInput').value.trim() || '기상 알람',
+          mission: document.getElementById('missionSelect').value,
+          sound: document.getElementById('soundSelect').value,
+          noSnooze: document.getElementById('noSnoozeCheck').checked,
+          fadeIn: document.getElementById('fadeInCheck').checked,
+          strobe: document.getElementById('strobeCheck').checked,
+          wakeCheck: document.getElementById('wakeCheckToggle').checked,
+          tts: document.getElementById('ttsCheck').checked,
+          enabled: true
+        };
+
+        if (editingAlarmId) {
+          const idx = alarms.findIndex(a => a.id === editingAlarmId);
+          if (idx > -1) alarms[idx] = newItem;
+        } else {
+          alarms.push(newItem);
+        }
+
+        saveAlarms();
+        closeModal();
+      });
+
+      // 알람 삭제
+      document.getElementById('deleteAlarmBtn').addEventListener('click', () => {
+        if (editingAlarmId) {
+          alarms = alarms.filter(a => a.id !== editingAlarmId);
+          saveAlarms();
+          closeModal();
+        }
+      });
+
+      // 즉시 체험 버튼 (기다리실 필요 없이 현재 첫 번째 알람 설정으로 즉시 발동)
+      document.getElementById('testAlarmBtn').addEventListener('click', () => {
+        ensureAudioContext();
+        const sample = alarms[0] || {
+          hour: 6,
+          minute: 30,
+          label: '즉시 기상 미션 테스트',
+          mission: 'math',
+          sound: 'arpeggio',
+          noSnooze: true,
+          fadeIn: false,
+          strobe: true,
+          wakeCheck: true,
+          tts: true
+        };
+        triggerAlarm(sample);
+      });
+
+      // 기상 확인 배너 조기 인증
+      document.getElementById('confirmAwakeEarlyBtn').addEventListener('click', () => {
+        clearInterval(wakeCheckInterval);
+        document.getElementById('wakeupBanner').classList.remove('show');
+      });
+
+      // 기상 확인 최종 모달 인증
+      document.getElementById('verifyAwakeBtn').addEventListener('click', () => {
+        clearInterval(verifyModalInterval);
+        document.getElementById('wakeVerifyModal').classList.remove('active');
+      });
+
+      // 취침 대기 모드 열기/닫기
+      document.getElementById('nightstandBtn').addEventListener('click', () => {
+        ensureAudioContext();
+        requestWakeLock();
+        document.getElementById('nightstandOverlay').classList.add('active');
+      });
+
+      document.getElementById('exitNightstandBtn').addEventListener('click', () => {
+        releaseWakeLock();
+        document.getElementById('nightstandOverlay').classList.remove('active');
+      });
+    });
+  </script>
+</body>
+</html>
